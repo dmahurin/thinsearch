@@ -26,7 +26,7 @@ button{ padding:10px 12px; }
 <h1>Simple Search</h1>
 
 <div class="container">
-  <form id="searchForm" onsubmit="return handleSearch(event);" autocomplete="off">
+  <form id="searchForm" onsubmit="return handleSearch(event);">
     <div class="search-row">
       <input id="q" type="text" placeholder="Type a search or ! to see bangs (e.g. '!a headphones' or 'amazon headphones')"/>
       <button type="submit">Go</button>
@@ -76,7 +76,7 @@ const popup = document.getElementById('popup');
 const popupList = document.getElementById('popupList');
 let visible = false;
 let filtered = [];
-let highlightIndex = -1;
+let highlightIndex = 0;
 
 function showPopup() {
   popup.classList.remove('hidden');
@@ -92,7 +92,7 @@ function renderPopup(filter, final=true) {
     const f = filter.toLowerCase();
     filtered = bangs.filter(b => b.keyword.startsWith(f));
   } else {
-    filtered = bangs.filter(b => filter.includes(b.keyword));
+    filtered = filter.map(k => bangIndex[k]);
   }
   popupList.innerHTML = '';
   if (filtered.length === 0) {
@@ -103,6 +103,7 @@ function renderPopup(filter, final=true) {
     highlightIndex = -1;
     return;
   }
+  highlightIndex = 0;
   filtered.forEach((b, i) => {
     const li = document.createElement('li');
     li.tabIndex = -1;
@@ -147,7 +148,8 @@ input.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowUp') { e.preventDefault(); if (filtered.length) { highlightIndex = Math.max(0, highlightIndex-1); updateHighlight(true); } }
   else if (e.key === 'Enter') {
     // apply highlighted bang if popup visible and an item highlighted
-    if (highlightIndex >= 0 && filtered[highlightIndex]) {
+    //if (highlightIndex >= 0 && filtered[highlightIndex]) {
+    if (filtered.length > 0) {
       e.preventDefault();
       setTimeout(() => handleSearch());
     }
@@ -219,6 +221,11 @@ function handleRawSearch(raw) {
   let chosen = null;
   if (bangMatch) chosen = { ...bangMatch.entry, q: (bangMatch.remaining || '') };
   else if (siteMatch) chosen = { ...siteMatch.entry, q: (siteMatch.remaining || '') };
+
+  if (raw && filtered.length && !chosen) {
+    entry = filtered[highlightIndex >= 0 && highlightIndex < filtered.length ? highlightIndex : 0];
+    chosen = { ...entry, q: raw};
+  }
 
   if (chosen) {
     const tpl = chosen.template;
