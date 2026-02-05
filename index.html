@@ -15,8 +15,6 @@ button{ padding:10px 12px; }
 .popup ul { list-style:none; margin:0; padding:0; max-height:240px; overflow:auto; }
 .popup li { padding:8px 12px; border-bottom:1px solid #f1f1f1; cursor:pointer; display:flex; justify-content:space-between; }
 .popup li.highlight { background: rgba(128,128,128,0.5); mix-blend-mode: difference; }
-.suggestions { margin-top:12px; }
-.suggestions a{ text-decoration:none; margin-right:12px; }
 .hidden{ display:none; }
 .container { position:relative; max-width:800px; }
 </style>
@@ -37,8 +35,6 @@ button{ padding:10px 12px; }
     <ul id="popupList"></ul>
   </div>
 </div>
-
-<div id="suggestions" class="suggestions"></div>
 
 <script id="data-json" type="application/json">
 {"version":6,"bangs":[{"keyword":"amazon","name":"Amazon.com","url":"https://www.amazon.com/s?k=%s"},{"keyword":"a","alias":"amazon"},{"keyword":"ai","url":"https://duckduckgo.com/?q=%s&ia=chat&bang=true"},{"keyword":"allrecipes","name":"allrecipes","url":"https://www.allrecipes.com/search?q=%s"},{"keyword":"allsides","name":"AllSides","url":"https://www.allsides.com/search/?q=%s"},{"keyword":"archive","name":"Archive.org","url":"https://archive.org/search?query=%s"},{"keyword":"bettycrocker","name":"Betty Crocker","url":"https://www.bettycrocker.com/search?term=%s"},{"keyword":"bing","url":"https://www.bing.com/search?q=%s"},{"keyword":"brave","url":"https://safe.search.brave.com/search?q=hi"},{"keyword":"dictionary","name":"The Free Dictionary","url":"https://www.thefreedictionary.com/%s"},{"keyword":"d","alias":"dictionary"},{"keyword":"ddg","name":"DuckDuckGo","url":"https://safe.duckduckgo.com/?q=%s"},{"keyword":"e","url":"https://www.ebay.com/sch/i.html?_nkw=%s"},{"keyword":"ebrit","url":"https://www.britannica.com/search?query=%s"},{"keyword":"food","url":"https://www.food.com/search/%s"},{"keyword":"g","url":"https://www.google.com/search?q=%s"},{"keyword":"git","url":"https://github.com/search?q=%s"},{"keyword":"github","alias":"git"},{"keyword":"grok","url":"https://grok.com/?q=%s"},{"keyword":"grokipedia","url":"https://grokipedia.com/search?q=%s"},{"keyword":"homedepot","url":"https://www.homedepot.com/s/%s"},{"keyword":"image","url":"https://safe.duckduckgo.com/?q=%s&ia=images&iax=images"},{"keyword":"libby","url":"https://libbyapp.com/library/reads/search/query-%s/page-1"},{"keyword":"makerworld","url":"https://makerworld.com/en/search/models?keyword=%s"},{"keyword":"maps","url":"https://www.google.com/maps/search/%s"},{"keyword":"perplexity","url":"https://www.perplexity.ai/?q=linux"},{"keyword":"pip","url":"https://pypi.org/search/?q=%s"},{"keyword":"printables","url":"https://www.printables.com/search/models?q=%d"},{"keyword":"python","url":"https://docs.python.org/3/search.html?q=%s"},{"keyword":"seriouseats","url":"https://www.seriouseats.com/search?q=%s"},{"keyword":"simplyrecipes","url":"https://www.simplyrecipes.com/search?q=%s"},{"keyword":"so","alias":"stackoverflow"},{"keyword":"space","url":"https://www.space.com/search?searchTerm=%s"},{"keyword":"stackexchange","url":"https://stackexchange.com/search?q=%s"},{"keyword":"stackoverflow","url":"https://stackoverflow.com/search?q=%s"},{"keyword":"thesaurus","url":"https://www.thesaurus.com/browse/%s"},{"keyword":"thing","url":"https://www.thingiverse.com/search?q=%s"},{"keyword":"tubi","url":"https://tubitv.com/search/%s"},{"keyword":"ups","url":"https://www.ups.com/track?tracknum=%s"},{"keyword":"usps","url":"https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=%s"},{"keyword":"w","alias":"wa"},{"keyword":"wa","url":"https://www.wolframalpha.com/input/?i=%s"},{"keyword":"yt","url":"https://www.youtube.com/results?search_query=%s"}]}
@@ -73,7 +69,6 @@ function buildUrl(template, q) {
   return template.includes('%s') ? template.replace('%s', encoded) : template;
 }
 
-/* Popup logic */
 const input = document.getElementById('q');
 const popup = document.getElementById('popup');
 const popupList = document.getElementById('popupList');
@@ -91,10 +86,10 @@ function hidePopup() {
   highlightIndex = -1;
   filtered = [];
 }
-function renderPopup(filter, final=true) {
+function renderPopup(filter, exact=false, final=true) {
   if(typeof filter === 'string') {
     const f = filter.toLowerCase();
-    filtered = bangs.filter(b => b.keyword.startsWith(f));
+    filtered = exact ? bangs.filter(b => b.keyword == f) : bangs.filter(b => b.keyword.startsWith(f));
   } else {
     filtered = filter.map(k => bangIndex[k]);
   }
@@ -128,16 +123,15 @@ function updateHighlight(update) {
   }
 }
 
-/* When user types */
 input.addEventListener('input', (e) => {
   const val = input.value;
   const cursor = input.selectionStart;
   const before = val.slice(0, cursor);
   // detect last token starting with "!"
-  const m = /(^|\s)(![\w-]*)$/.exec(before);
+  const m = /(^|\s)(![\w-]*)( ?)/.exec(before);
   if (m) {
     const token = m[2].slice(1); // without !
-    renderPopup(token.toLowerCase());
+    renderPopup(token.toLowerCase(), m[3].length > 0);
     showPopup();
     positionPopup();
   } else {
@@ -145,7 +139,6 @@ input.addEventListener('input', (e) => {
   }
 });
 
-/* keyboard nav */
 input.addEventListener('keydown', (e) => {
   if (!visible) return;
   if (e.key === 'ArrowDown') { e.preventDefault(); if (filtered.length) { highlightIndex = Math.min(filtered.length-1, highlightIndex+1); updateHighlight(true); } }
@@ -162,7 +155,6 @@ input.addEventListener('keydown', (e) => {
   }
 });
 
-/* Position popup under input (basic) */
 function positionPopup() {
   const rect = input.getBoundingClientRect();
   popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
