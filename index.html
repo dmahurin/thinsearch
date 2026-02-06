@@ -45,7 +45,20 @@ button{ padding:10px 12px; }
 </script>
 
 <script>
+// Load default bangs from embedded JSON
 const bangsJson = JSON.parse(document.getElementById('data-json').textContent);
+// Override with user custom bangs from localStorage if present
+const storedBangJson = localStorage.getItem('bangs');
+if (storedBangJson) {
+  try {
+    const userBangs = JSON.parse(storedBangJson);
+    if (Array.isArray(userBangs)) {
+      bangsJson.bangs = userBangs;
+    }
+  } catch (e) {
+    console.warn('Failed to parse stored bangs', e);
+  }
+}
 const categoryMatchesJson = JSON.parse(document.getElementById('data-category-match-json').textContent);
 
 function extractSiteName(url) {
@@ -255,6 +268,80 @@ function renderSuggestions(rawQuery) {
   positionPopup();
 }
 
+// Settings page to edit bangs
+function showSettingsPage() {
+  document.body.innerHTML = '';
+  const form = document.createElement('form');
+  form.id = 'bangsForm';
+  const table = document.createElement('table');
+  const header = document.createElement('tr');
+  ['Keyword','Alias','Name','URL','Category'].forEach(text=>{
+    const th = document.createElement('th'); th.textContent = text; header.appendChild(th);
+  });
+  table.appendChild(header);
+  bangs.forEach((b,i)=>{
+    const row = document.createElement('tr');
+    ['keyword','alias','name','url','category'].forEach(field=>{
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.name = field;
+      input.value = b[field] || '';
+      input.dataset.index = i;
+      td.appendChild(input);
+      row.appendChild(td);
+    });
+    const del = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Delete';
+    btn.onclick = () => { table.removeChild(row); };
+    del.appendChild(btn);
+    row.appendChild(del);
+    table.appendChild(row);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.textContent = 'Add Bang';
+  addBtn.onclick = () => {
+    const row = document.createElement('tr');
+    ['keyword','alias','name','url','category'].forEach(field=>{
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.name = field;
+      td.appendChild(input);
+      row.appendChild(td);
+    });
+    const del = document.createElement('td');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Delete';
+    btn.onclick = () => { table.removeChild(row); };
+    del.appendChild(btn);
+    row.appendChild(del);
+    table.appendChild(row);
+  };
+  form.appendChild(table);
+  form.appendChild(addBtn);
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.textContent = 'Save';
+  saveBtn.onclick = () => {
+    const newBangs = [];
+    Array.from(table.querySelectorAll('tr')).slice(1).forEach(tr=>{
+      const obj = {};
+      tr.querySelectorAll('input').forEach(inp=>{ obj[inp.name] = inp.value; });
+      if (obj.keyword) newBangs.push(obj);
+    });
+    localStorage.setItem('bangs', JSON.stringify(newBangs));
+    location.href = location.pathname;
+  };
+  form.appendChild(saveBtn);
+  document.body.appendChild(form);
+}
+
+
 /* Close popup when clicking outside */
 document.addEventListener('click', (e) => {
   if (!popup.contains(e.target) && e.target !== input) hidePopup();
@@ -268,6 +355,11 @@ const query = new URLSearchParams(window.location.search);
 
 if (query.has('q')) {
   handleRawSearch(query.get('q'));
+}
+
+// If settings requested, show settings page and stop further script
+if (query.has('settings')) {
+  showSettingsPage();
 }
 
 </script>
