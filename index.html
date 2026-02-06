@@ -281,12 +281,15 @@ function showSettingsPage() {
   table.appendChild(header);
   bangs.forEach((b,i)=>{
     const row = document.createElement('tr');
+    if(b.alias == b.keyword) { b['alias-default'] = b.alias; b.alias = ''; }
+    if(b.name == extractSiteName(b.url)) { b['name-default'] = b.name; b.name = ''; }
     ['keyword','alias','name','url','category'].forEach(field=>{
       const td = document.createElement('td');
       const input = document.createElement('input');
       input.type = 'text';
       input.name = field;
       input.value = b[field] || '';
+      if (b[field + '-default']) input.placeholder = b[field + '-default'];
       input.dataset.index = i;
       td.appendChild(input);
       row.appendChild(td);
@@ -331,7 +334,7 @@ function showSettingsPage() {
     const newBangs = [];
     Array.from(table.querySelectorAll('tr')).slice(1).forEach(tr=>{
       const obj = {};
-      tr.querySelectorAll('input').forEach(inp=>{ obj[inp.name] = inp.value; });
+      tr.querySelectorAll('input').forEach(inp=>{ if(inp.value.length) obj[inp.name] = inp.value; });
       if (obj.keyword) newBangs.push(obj);
     });
     localStorage.setItem('bangs', JSON.stringify(newBangs));
