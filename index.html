@@ -338,6 +338,23 @@ function showSettingsPage() {
     location.href = location.pathname;
   };
   form.appendChild(saveBtn);
+  // Export button: download current bangs as JSON
+  const exportBtn = document.createElement('button');
+  exportBtn.type = 'button';
+  exportBtn.textContent = 'Export JSON';
+  exportBtn.onclick = () => {
+    // Use stored bangs if present, otherwise fall back to default bangs
+    const stored = localStorage.getItem('bangs');
+    const data = stored ? stored : JSON.stringify(bangsJson.bangs, null, 2);
+    const blob = new Blob([data], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bangs.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  form.appendChild(exportBtn);
   document.body.appendChild(form);
 }
 
