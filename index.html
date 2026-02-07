@@ -355,6 +355,37 @@ function showSettingsPage() {
     URL.revokeObjectURL(url);
   };
   form.appendChild(exportBtn);
+  // Import button: load bangs from a JSON file
+  const importBtn = document.createElement('button');
+  importBtn.type = 'button';
+  importBtn.textContent = 'Import JSON';
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.json';
+  fileInput.style.display = 'none';
+  fileInput.onchange = () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target.result;
+        const json = JSON.parse(data);
+        if (!Array.isArray(json)) {
+          alert('JSON must be an array of bangs');
+          return;
+        }
+        localStorage.setItem('bangs', JSON.stringify(json));
+        location.href = location.pathname;
+      } catch (err) {
+        alert('Failed to parse JSON');
+      }
+    };
+    reader.readAsText(file);
+  };
+  importBtn.onclick = () => fileInput.click();
+  form.appendChild(importBtn);
+  form.appendChild(fileInput);
   document.body.appendChild(form);
 }
 
