@@ -109,9 +109,16 @@ function hidePopup() {
   filtered = [];
 }
 function renderPopup(filter, exact=false, final=true) {
+  let show_key = 'alias';
   if(typeof filter === 'string') {
     const f = filter.toLowerCase();
-    filtered = exact ? bangs.filter(b => b.alias == f) : bangs.filter(b => b.alias.startsWith(f));
+    for (const key of [ 'alias', 'keyword', 'category' ]) {
+       filtered = exact ? bangs.filter(b => b[key] == f) : bangs.filter(b => b[key] && b[key].startsWith(f));
+       if (filtered.length) {
+         show_key = key;
+         break;
+       }
+    }
   } else {
     filtered = filter;
   }
@@ -129,7 +136,7 @@ function renderPopup(filter, exact=false, final=true) {
     const li = document.createElement('li');
     li.tabIndex = -1;
     li.dataset.index = i;
-    li.innerHTML = `<span><strong>!${typeof filter === 'string' ? b.alias : b.keyword}</strong></span><span style="opacity:.7">${b.name}</span>`;
+    li.innerHTML = `<span><strong>!${typeof filter === 'string' ? b[show_key] : b.keyword}</strong></span><span style="opacity:.7">${b.name}</span>`;
     li.addEventListener('click', () => { highlightIndex = i; if(updateHighlight(true, true) == false) { setTimeout(() => handleSearch()); }});
     popupList.appendChild(li);
   }
