@@ -42,7 +42,7 @@ button{ padding:10px 12px; }
 </script>
 
 <script id="data-category-match-json" type="application/json">
-[["^(find) ",["search"]],["^(how many) ",["calculate"]],["^(what is a) ",["encyclopedia","ai"]],["^(what|when|why|where|do|how) ", ["ai"]],["\\b(recipe)\\b",["food"]],["^(\\S+)$",["dictionary","encyclopedia"]],["",["encyclopedia","ai","search"]]]
+[["^(find) ",["search"]],["^(how many) ",["calculate"]],["^(what is a) ",["encyclopedia","ai"]],["^(what|when|why|where|do|how) ", ["ai"]],["\\b(recipe)\\b",["food"]],["^([a-z]{2,})$",["dictionary","encyclopedia", "search"]]]
 </script>
 
 <script>
@@ -130,19 +130,20 @@ function renderPopup(filter, exact=false, final=true) {
     li.tabIndex = -1;
     li.dataset.index = i;
     li.innerHTML = `<span><strong>!${typeof filter === 'string' ? b.alias : b.keyword}</strong></span><span style="opacity:.7">${b.name}</span>`;
-    li.addEventListener('click', () => { highlightIndex = i; updateHighlight(true, true, final); });
+    li.addEventListener('click', () => { highlightIndex = i; if(updateHighlight(true, true) == false) { setTimeout(() => handleSearch()); }});
     popupList.appendChild(li);
   }
   updateHighlight(false);
 }
 
-function updateHighlight(update, done = false, final = false) {
+function updateHighlight(update, done = false) {
   Array.from(popupList.children).forEach((li, i) => {
     li.classList.toggle('highlight', i === highlightIndex);
   });
   if(update && highlightIndex >= 0) {
-  applyBangAtCursor(filtered[highlightIndex], done, final);
+    return applyBangAtCursor(filtered[highlightIndex], done);
   }
+  return false;
 }
 
 input.addEventListener('input', (e) => {
@@ -157,7 +158,7 @@ input.addEventListener('input', (e) => {
     showPopup();
     positionPopup();
   } else {
-    hidePopup();
+    renderSuggestions(input.value);
   }
 });
 
@@ -185,31 +186,24 @@ function positionPopup() {
 }
 
 /* Replace the bang token in the input with the selected bang keyword (keeping rest) and redirect */
-function applyBangAtCursor(bang, done, final = false) {
+function applyBangAtCursor(bang, done) {
   // replace the last !token in the input with '!alias' and submit
   const val = input.value;
   const cursor = input.selectionStart;
   const before = val.slice(0, cursor);
   const after = val.slice(cursor);
-  const m = /(^|\s)(![\w-]*)$/.exec(before);
+  const m = /(^|\s)(!([\w]+\s*)?)$/.exec(before);
   if (!m) {
-    if (final) {
-      input.value = '!' + bang.alias + ' ' + input.value;
-      setTimeout(() => handleSearch());
-    }
-    return;
+    return false;
   }
   const prefix = before.slice(0, m.index + (m[1] ? 1 : 0)); // keep leading space if present
   const newVal = prefix + '!' + bang.alias + (after.startsWith(' ') ? after : (after ? ' ' + after : ''));
   input.value = newVal.trimStart();
   if(done) {
     input.value += ' ';
-    hidePopup();
     input.focus();
   }
-  if(final) {
-    setTimeout(() => handleSearch());
-  }
+  return true;
 }
 
 function handleSearch(e) {
@@ -261,9 +255,13 @@ function renderSuggestions(rawQuery) {
   }
   let entries = [];
   for (const c of categories) { entries.push(...bangs.filter(e => e.category == c)); }
-  renderPopup(entries);
-  showPopup();
-  positionPopup();
+  if (entries.length) {
+    renderPopup(entries);
+    showPopup();
+    positionPopup();
+  } else {
+    hidePopup();
+  }
 }
 
 // Settings page to edit bangs
