@@ -42,7 +42,7 @@ button{ padding:10px 12px; }
 </script>
 
 <script id="data-category-match-json" type="application/json">
-[["^(find) ",["search"]],["^(how many) ",["calculate"]],["^(what is a) ",["encyclopedia","ai"]],["^(what|when|why|where|do|how) ", ["ai"]],["\\b(recipe)\\b",["food"]],["^([a-z]{2,})$",["dictionary","encyclopedia", "search"]]]
+[["^find ",["search"]],["^how many ",["calculate"]],["^what is a ",["encyclopedia","ai"]],["^(?:what|when|why|where|do|how) ", ["ai"]],["\\b(?:recipe)\\b",["food"]],["^(?:[a-z]{2,})",["dictionary","encyclopedia", "search", "ai"]]]
 </script>
 
 <script>
@@ -108,17 +108,17 @@ function hidePopup() {
   highlightIndex = -1;
   filtered = [];
 }
-function renderPopup(filter, exact=false, final=true) {
+function renderPopup(filter, exact=false, keys = ['alias', 'keyword', 'category']) {
   let show_key = 'alias';
   if(typeof filter === 'string') {
     const f = filter.toLowerCase();
     filtered = [];
     for (const b of bangs) {
-      for (const key of [ 'alias', 'keyword', 'category' ]) {
-         if ( exact && b[key] == f || b[key] && b[key].startsWith(f)) {
-           filtered.push([b, b[key]]);
-           break;
-         }
+      for (const key of keys) {
+        if ( exact && b[key] == f || b[key] && b[key].startsWith(f)) {
+          filtered.push([b, b[key]]);
+          break;
+        }
       }
     }
   } else {
@@ -131,7 +131,7 @@ function renderPopup(filter, exact=false, final=true) {
     li.className = 'no-match';
     popupList.appendChild(li);
     highlightIndex = -1;
-    return;
+    return false;
   }
   highlightIndex = 0;
   for (const [i, e] of filtered.entries()) {
@@ -143,6 +143,7 @@ function renderPopup(filter, exact=false, final=true) {
     popupList.appendChild(li);
   }
   updateHighlight(false);
+  return true;
 }
 
 function updateHighlight(update, done = false) {
@@ -160,10 +161,12 @@ input.addEventListener('input', (e) => {
   const cursor = input.selectionStart;
   const before = val.slice(0, cursor);
   // detect last token starting with "!"
-  const m = /(^|\s)(![\w-]*)( ?)/.exec(before);
-  if (m) {
-    const token = m[2].slice(1); // without !
-    renderPopup(token.toLowerCase(), m[3].length > 0);
+  let m;
+  if ((m = /(?:^|\s)(![\w-]*)( ?)/.exec(before))) {
+    renderPopup(m[1].slice(1).toLowerCase(), m[2].length > 0);
+    showPopup();
+    positionPopup();
+  } else if ((m = /^([\w]+)( ?)/.exec(before)) && renderPopup(m[1].toLowerCase(), m[2].length > 0, ['keyword', 'category'])) {
     showPopup();
     positionPopup();
   } else {
@@ -226,6 +229,7 @@ function handleRawSearch(raw) {
   const parts = raw.split(/\s+/);
   const first = parts[0].toLowerCase();
   let entry = null;
+  let key = '';
   let q = '';
   if (m = raw.match(/(?<=^|\s)!([a-z]+)(?:$|\s+)/)) {
     key = m[1];
@@ -238,7 +242,7 @@ function handleRawSearch(raw) {
   }
 
   if (filtered.length > 1) {
-    entry = filtered[highlightIndex >= 0 && highlightIndex < filtered.length ? highlightIndex : 0][0];
+    [ entry, key, q ] = filtered[highlightIndex >= 0 && highlightIndex < filtered.length ? highlightIndex : 0];
   }
 
   if (entry) {
@@ -263,7 +267,11 @@ function renderSuggestions(rawQuery) {
     }
   }
   let entries = [];
-  for (const c of categories) { entries.push([...bangs.filter(e => e.category == c), e.category]); }
+  for (const c of categories) {
+    for (const b of bangs.filter(e => e.category == c)) {
+      entries.push([b, c, rawQuery]);
+    }
+  }
   if (entries.length) {
     renderPopup(entries);
     showPopup();
