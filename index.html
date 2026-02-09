@@ -115,7 +115,7 @@ function filterWithString(filter, search, exact=false, keys = ['alias', 'keyword
   filtered = [];
   for (const b of bangs) {
     for (const key of keys) {
-      if ( exact && b[key] == f || b[key] && b[key].startsWith(f)) {
+      if ( exact ? b[key] == f : b[key] && b[key].startsWith(f)) {
         filtered.push([b, b[key], search]);
         break;
       }
@@ -150,6 +150,7 @@ function renderPopup(filtered) {
 function updateHighlight(update, done = false) {
   Array.from(popupList.children).forEach((li, i) => {
     li.classList.toggle('highlight', i === highlightIndex);
+    if(i === highlightIndex) li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
   if(update && highlightIndex >= 0) {
     return applyBangAtCursor(filtered[highlightIndex][0], done);
@@ -157,11 +158,8 @@ function updateHighlight(update, done = false) {
   return false;
 }
 
-input.addEventListener('input', (e) => {
-  const val = input.value;
-  const cursor = input.selectionStart;
-  const before = val.slice(0, cursor);
-  // detect last token starting with "!"
+function processInput(value, cursor) {
+  const before = value.slice(0, cursor);
   let m;
   if ((m = /(?<=^|\s)(![\w-]*)( ?)/.exec(before))) {
     renderPopup(filterWithString(m[1].slice(1).toLowerCase(), before.slice(0, m.index) + before.slice(m.index + m[1].length + m[2].length) + input.value.slice(cursor), m[2].length > 0));
@@ -173,6 +171,10 @@ input.addEventListener('input', (e) => {
   } else {
     renderSuggestions(input.value);
   }
+}
+
+input.addEventListener('input', (e) => {
+  processInput(input.value, input.selectionStart);
 });
 
 input.addEventListener('keydown', (e) => {
@@ -235,7 +237,6 @@ function handleRawSearch(raw) {
     window.location.href = target;
     return false;
   }
-  if (!input.value) { input.value = raw; }
 
   renderSuggestions(raw);
   return false;
@@ -402,7 +403,10 @@ window.addEventListener('scroll', () => { if (visible) positionPopup(); });
 const query = new URLSearchParams(window.location.search);
 
 if (query.has('q')) {
-  handleRawSearch(query.get('q'));
+  input.value = query.get('q');
+  processInput(input.value, input.value.length);
+  input.focus();
+  if (filtered.length == 1) { setTimeout(() => handleSearch()); }
 }
 
 // If settings requested, show settings page and stop further script
