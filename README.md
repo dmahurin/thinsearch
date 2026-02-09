@@ -1,6 +1,6 @@
-# Simple Search
+# Thin Search
 
-Simple‑Search is a **single‑file, server‑less search UI** that lives in a single HTML file.  It works entirely in the browser — no backend, no build step, no hosting required.  Drop the file on a local drive or host it on any static‑file server and you have a fast, privacy‑friendly search bar.
+Thin Search is a **single‑file, server‑less search UI** that lives in a single HTML file.  It works entirely in the browser — no backend, no build step, no hosting required.  Drop the file on a local drive or host it on any static‑file server and you have a fast, privacy‑friendly search bar.
 
 ## Core Features
 

@@ -4,7 +4,7 @@
 <head>
 <meta name="color-scheme" content="light dark">
 <meta charset="utf-8" />
-<title>Simple Search</title>
+<title>Thin Search</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
 body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin: 24px; }
@@ -21,7 +21,7 @@ button{ padding:10px 12px; }
 </head>
 <body>
 
-<h1>Simple Search</h1>
+<h1><font style="font-weight: 100;">Thin</font> Search</h1>
 
 <div class="container">
   <form id="searchForm" onsubmit="return handleSearch(event);">
@@ -139,7 +139,7 @@ function renderPopup(filtered) {
     const li = document.createElement('li');
     li.tabIndex = -1;
     li.dataset.index = i;
-    li.innerHTML = `<span><strong>!${e[1]}</strong></span><span style="opacity:.7">${e[0].name}</span>`;
+    li.innerHTML = `<span><strong>${e[0].name}</strong></span><span style="opacity:.7">!${e[1]}</span>`;
     li.addEventListener('click', () => { highlightIndex = i; if(updateHighlight(true, true) == false) { setTimeout(() => handleSearch()); }});
     popupList.appendChild(li);
   }
@@ -238,7 +238,7 @@ function handleRawSearch(raw) {
     return false;
   }
 
-  renderSuggestions(raw);
+  processInput(input.value, input.value.length);
   return false;
 }
 
