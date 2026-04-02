@@ -37,6 +37,237 @@ button{ padding:10px 12px; }
   </div>
 </div>
 
+<script>
+const units = {
+  // length (base: meter)
+  mm: { type: "length", toBase: v => v / 1000, fromBase: v => v * 1000 },
+  cm: { type: "length", toBase: v => v / 100, fromBase: v => v * 100 },
+  m:  { type: "length", toBase: v => v, fromBase: v => v },
+  km: { type: "length", toBase: v => v * 1000, fromBase: v => v / 1000 },
+  in: { type: "length", toBase: v => v * 0.0254, fromBase: v => v / 0.0254 },
+  ft: { type: "length", toBase: v => v * 0.3048, fromBase: v => v / 0.3048 },
+  yd: { type: "length", toBase: v => v * 0.9144, fromBase: v => v / 0.9144 },
+  mi: { type: "length", toBase: v => v * 1609.344, fromBase: v => v / 1609.344 },
+  // mass (base: kilogram)
+  g:  { type: "mass", toBase: v => v / 1000, fromBase: v => v * 1000 },
+  kg: { type: "mass", toBase: v => v, fromBase: v => v },
+  oz: { type: "mass", toBase: v => v * 0.028349523125, fromBase: v => v / 0.028349523125 },
+  lb: { type: "mass", toBase: v => v * 0.45359237, fromBase: v => v / 0.45359237 },
+  // volume (base: liter)
+  ml: { type: "volume", toBase: v => v / 1000, fromBase: v => v * 1000 },
+  l:  { type: "volume", toBase: v => v, fromBase: v => v },
+  tsp: { type: "volume", toBase: v => v * 0.00492892159375, fromBase: v => v / 0.00492892159375 },
+  tbsp:{ type: "volume", toBase: v => v * 0.01478676478125, fromBase: v => v / 0.01478676478125 },
+  floz:{ type: "volume", toBase: v => v * 0.0295735295625, fromBase: v => v / 0.0295735295625 },
+  cup:{ type: "volume", toBase: v => v * 0.2365882365, fromBase: v => v / 0.2365882365 },
+  pt: { type: "volume", toBase: v => v * 0.473176473, fromBase: v => v / 0.473176473 },
+  qt: { type: "volume", toBase: v => v * 0.946352946, fromBase: v => v / 0.946352946 },
+  gal:{ type: "volume", toBase: v => v * 3.785411784, fromBase: v => v / 3.785411784 },
+  // time (base: second)
+  ms: { type: "time", toBase: v => v / 1000, fromBase: v => v * 1000 },
+  s:  { type: "time", toBase: v => v, fromBase: v => v },
+  min:{ type: "time", toBase: v => v * 60, fromBase: v => v / 60 },
+  h:  { type: "time", toBase: v => v * 3600, fromBase: v => v / 3600 },
+  d:  { type: "time", toBase: v => v * 86400, fromBase: v => v / 86400 },
+  // temperature (base: celsius)
+  c:  { type: "temp", toBase: v => v, fromBase: v => v },
+  f:  { type: "temp", toBase: v => (v - 32) * 5/9, fromBase: v => (v * 9/5) + 32 },
+  k:  { type: "temp", toBase: v => v - 273.15, fromBase: v => v + 273.15 }
+};
+
+const unitAliases = {
+  millimeter: "mm", millimeters: "mm", millimetre: "mm", millimetres: "mm",
+  centimeter: "cm", centimeters: "cm", centimetre: "cm", centimetres: "cm",
+  meter: "m", meters: "m", metre: "m", metres: "m",
+  kilometer: "km", kilometers: "km", kilometre: "km", kilometres: "km",
+  inch: "in", inches: "in",
+  foot: "ft", feet: "ft",
+  yard: "yd", yards: "yd",
+  mile: "mi", miles: "mi",
+  gram: "g", grams: "g",
+  kilogram: "kg", kilograms: "kg",
+  ounce: "oz", ounces: "oz",
+  pound: "lb", pounds: "lb", lbs: "lb",
+  milliliter: "ml", milliliters: "ml", millilitre: "ml", millilitres: "ml",
+  liter: "l", liters: "l", litre: "l", litres: "l",
+  teaspoon: "tsp", teaspoons: "tsp",
+  tablespoon: "tbsp", tablespoons: "tbsp",
+  "fl_oz": "floz", "fl_oz.": "floz", "fl_ozs": "floz", "fl_ozs.": "floz",
+  "fl-oz": "floz", "fl-ozs": "floz",
+  "fluidounce": "floz", "fluidounces": "floz",
+  cup: "cup", cups: "cup",
+  pint: "pt", pints: "pt",
+  quart: "qt", quarts: "qt",
+  gallon: "gal", gallons: "gal",
+  millisecond: "ms", milliseconds: "ms",
+  second: "s", seconds: "s",
+  minute: "min", minutes: "min",
+  hour: "h", hours: "h",
+  day: "d", days: "d",
+  celsius: "c", fahrenheit: "f", kelvin: "k"
+};
+
+function canonicalUnit(u) {
+  return unitAliases[u] || u;
+}
+
+function tryConvert(input, check = false) {
+  const m = input.trim().toLowerCase()
+    .match(/^([+-]?(?:\d+\.?\d*|\.\d+))\s*([a-z]+)\s*(to|in)\s*([a-z]+)$/i);
+  if (!m) return null;
+
+  const valueStr = m[1];
+  const unitFrom = canonicalUnit(m[2]);
+  const unitTo = canonicalUnit(m[4]);
+
+  if (!units[unitFrom] || !units[unitTo]) return null;
+  if (units[unitFrom].type !== units[unitTo].type) return null;
+
+  const value = Number(valueStr);
+  if (!Number.isFinite(value)) return Infinity;
+
+  if (check) return {};
+
+  const base = units[unitFrom].toBase(value);
+  const out = units[unitTo].fromBase(base);
+  return { value: out, unit: unitTo };
+}
+
+function tokenize(expr) {
+  const out = [];
+  const re = /\s*([0-9]*\.?[0-9]+|\*\*|[()+\-*/^])\s*/g;
+  let m;
+  let idx = 0;
+  while ((m = re.exec(expr)) !== null) {
+    if (m.index !== idx) return null;
+    out.push(m[1]);
+    idx = re.lastIndex;
+  }
+  if (idx !== expr.length) return null;
+  return out;
+}
+
+function isNumberToken(t) {
+  return !isNaN(t);
+}
+
+function insertImplicitMultiplication(tokens) {
+  const out = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    const prev = out[out.length - 1];
+    if (prev !== undefined) {
+      const prevIsNum = isNumberToken(prev);
+      const currIsNum = isNumberToken(t);
+      if ((prevIsNum || prev === ")") && t === "(") {
+        out.push("*");
+      } else if (prev === ")" && currIsNum) {
+        out.push("*");
+      }
+    }
+    out.push(t);
+  }
+  return out;
+}
+
+function toRPN(tokens) {
+  const output = [];
+  const ops = [];
+  const prec = { "+": 1, "-": 1, "*": 2, "/": 2, "^": 3, "**": 3 };
+  const rightAssoc = { "^": true, "**": true };
+  let lastIsOperand = false;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (!isNaN(t)) {
+      output.push(t);
+      lastIsOperand = true;
+      continue;
+    }
+    if (t === "(" ) { ops.push(t); lastIsOperand = false; continue; }
+    if (t === ")") {
+      if (!lastIsOperand) return null;
+      while (ops.length && ops[ops.length - 1] !== "(") output.push(ops.pop());
+      if (!ops.length) return null;
+      ops.pop();
+      lastIsOperand = true;
+      continue;
+    }
+
+    if ("+-*/^".includes(t) || t === "**") {
+      // unary minus
+      if (!lastIsOperand) {
+        if (t === "-") output.push("0");
+        else return null;
+      }
+      while (ops.length) {
+        const top = ops[ops.length - 1];
+        if (!(top in prec)) break;
+        if ((rightAssoc[t] && prec[t] < prec[top]) || (!rightAssoc[t] && prec[t] <= prec[top])) {
+          output.push(ops.pop());
+        } else break;
+      }
+      ops.push(t);
+      lastIsOperand = false;
+      continue;
+    }
+    return null;
+  }
+
+  if (!lastIsOperand) return null;
+
+  while (ops.length) {
+    const op = ops.pop();
+    if (op === "(" || op === ")") return null;
+    output.push(op);
+  }
+  return output;
+}
+
+function evalRPN(rpn) {
+  const stack = [];
+  for (const t of rpn) {
+    if (!isNaN(t)) { stack.push(Number(t)); continue; }
+    const b = stack.pop();
+    const a = stack.pop();
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return Infinity;
+    let v;
+    switch (t) {
+      case "+": v = a + b; break;
+      case "-": v = a - b; break;
+      case "*": v = a * b; break;
+      case "/": v = a / b; break;
+      case "^": v = Math.pow(a, b); break;
+      case "**": v = Math.pow(a, b); break;
+      default: return null;
+    }
+    stack.push(v);
+  }
+  if (stack.length !== 1) return null;
+  return stack[0];
+}
+
+function evaluate(input, check = false) {
+  if(!input || input.length == 0) return null;
+  const conv = tryConvert(input, check);
+  if (conv) {
+    if (conv === null || conv === undefined) return null;
+    if (check) return '';
+    return `${conv.value} ${conv.unit}`;
+  }
+
+  const tokensRaw = tokenize(input);
+  if (!tokensRaw) return null;
+  const tokens = insertImplicitMultiplication(tokensRaw);
+  const rpn = toRPN(tokens);
+  if (!rpn) return null;
+  if (check) return '';
+  const value = evalRPN(rpn);
+  return String(value);
+}
+
+</script>
+
 <script id="data-json" type="application/json">
 {"version":6,"bangs":[{"keyword":"amazon","alias":"a","name":"Amazon.com","url":"https://www.amazon.com/s?k=%s"},{"name":"DuckDuckGo AI","keyword":"ai","url":"https://duckduckgo.com/?q=%s&ia=chat&bang=true","category":"ai"},{"keyword":"allrecipes","name":"allrecipes","url":"https://www.allrecipes.com/search?q=%s","category":"food"},{"keyword":"allsides","name":"AllSides","url":"https://www.allsides.com/search/?q=%s"},{"keyword":"archive","name":"Archive.org","url":"https://archive.org/search?query=%s"},{"keyword":"bettycrocker","name":"Betty Crocker","url":"https://www.bettycrocker.com/search?term=%s","category":"food"},{"keyword":"bing","url":"https://www.bing.com/search?q=%s"},{"keyword":"brave","url":"https://safe.search.brave.com/search?q=hi"},{"keyword":"dictionary","alias":"d","name":"The Free Dictionary","url":"https://www.thefreedictionary.com/%s","category":"dictionary"},{"keyword":"duckduckgo","alias":"ddg","name":"DuckDuckGo","url":"https://safe.duckduckgo.com/?q=%s","category":"search"},{"keyword":"ebay","alias":"e","url":"https://www.ebay.com/sch/i.html?_nkw=%s"},{"keyword":"ebrit","url":"https://www.britannica.com/search?query=%s","category":"encyclopedia"},{"keyword":"food","url":"https://www.food.com/search/%s","category":"food"},{"keyword":"google","alias":"g","url":"https://www.google.com/search?q=%s","category":"search"},{"keyword":"github","alias":"git","url":"https://github.com/search?q=%s"},{"keyword":"grok","url":"https://grok.com/?q=%s","category":"ai"},{"keyword":"grokipedia","url":"https://grokipedia.com/search?q=%s","category":"encyclopedia"},{"keyword":"wikipedia","alias":"w","url":"https://en.wikipedia.org/wiki/Special:Search?search=%s","category":"encyclopedia"},{"keyword":"homedepot","url":"https://www.homedepot.com/s/%s"},{"name":"DuckDuckGo images","keyword":"image","url":"https://safe.duckduckgo.com/?q=%s&ia=images&iax=images","category":"images"},{"name":"Brave images","keyword":"image","url":"https://safe.search.brave.com/images?q=%s","category":"images"},{"keyword":"libby","url":"https://libbyapp.com/library/reads/search/query-%s/page-1"},{"keyword":"makerworld","url":"https://makerworld.com/en/search/models?keyword=%s"},{"keyword":"maps","url":"https://www.google.com/maps/search/%s"},{"keyword":"perplexity","url":"https://www.perplexity.ai/?q=linux"},{"keyword":"pip","url":"https://pypi.org/search/?q=%s"},{"keyword":"printables","url":"https://www.printables.com/search/models?q=%d"},{"name":"GeeksForGeeks (python)","keyword":"python","url":"https://www.geeksforgeeks.org/search/?gq=python+%s"},{"name":"GeeksForGeeks (javascript)","keyword":"javascript","url":"https://www.geeksforgeeks.org/search/?gq=javascript+%s"},{"keyword":"seriouseats","url":"https://www.seriouseats.com/search?q=%s"},{"keyword":"simplyrecipes","url":"https://www.simplyrecipes.com/search?q=%s"},{"keyword":"space","url":"https://www.space.com/search?searchTerm=%s"},{"keyword":"stackexchange","url":"https://stackexchange.com/search?q=%s"},{"keyword":"stackoverflow","alias":"so","url":"https://stackoverflow.com/search?q=%s"},{"keyword":"thesaurus","url":"https://www.thesaurus.com/browse/%s"},{"keyword":"thing","url":"https://www.thingiverse.com/search?q=%s"},{"keyword":"tubi","url":"https://tubitv.com/search/%s"},{"keyword":"ups","url":"https://www.ups.com/track?tracknum=%s"},{"keyword":"usps","url":"https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=%s"},{"keyword":"wolfram","alias":"wa","url":"https://www.wolframalpha.com/input/?i=%s","category":"calculate"},{"keyword":"youtube","alias":"yt","url":"https://www.youtube.com/results?search_query=%s","category":"videos"}]}
 </script>
@@ -159,6 +390,13 @@ function updateHighlight(update, done = false) {
 }
 
 function processInput(value, cursor) {
+  if(null !== evaluate(value, true)) {
+    r = evaluate(value);
+    popupList.innerHTML = r;
+    showPopup();
+    return;
+  }
+
   const before = value.slice(0, cursor);
   let m;
   if ((m = /(?<=^|\s)(![\w-]*)( ?)/.exec(before))) {
