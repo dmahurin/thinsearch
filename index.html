@@ -285,7 +285,7 @@ if (storedBangJson) {
   try {
     const userBangs = JSON.parse(storedBangJson);
     if (Array.isArray(userBangs)) {
-      bangsJson.bangs = userBangs;
+      bangsJson.bangs.update(userBangs);
     }
   } catch (e) {
     console.warn('Failed to parse stored bangs', e);
@@ -502,7 +502,7 @@ function renderSuggestions(rawQuery) {
 }
 
 // Settings page to edit bangs
-function showSettingsPage() {
+function showSettingsPage(bangs) {
   document.body.innerHTML = '';
   const form = document.createElement('form');
   form.id = 'bangsForm';
@@ -514,8 +514,9 @@ function showSettingsPage() {
   table.appendChild(header);
   bangs.forEach((b,i)=>{
     const row = document.createElement('tr');
-    if(b.alias == b.keyword) { b['alias-default'] = b.alias; b.alias = ''; }
-    if(b.name == capitalizeName(b.keyword) || extractSiteName(b.url)) { b['name-default'] = b.name; b.name = ''; }
+    if(b.alias == b.keyword || !b.alias) { b['alias-default'] = b.keyword; b.alias = ''; }
+    const default_name = capitalizeName(b.keyword) || extractSiteName(b.url);
+    if(b.name == default_name || !b.name) { b['name-default'] = default_name; b.name = ''; }
     ['keyword','alias','name','url','category'].forEach(field=>{
       const td = document.createElement('td');
       const input = document.createElement('input');
@@ -646,7 +647,7 @@ if (query.has('q')) {
 
 // If settings requested, show settings page and stop further script
 if (query.has('settings')) {
-  showSettingsPage();
+  showSettingsPage(bangsJson.bangs);
 }
 
 </script>
